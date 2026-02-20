@@ -3,10 +3,30 @@
 import { useEffect, useRef } from 'react';
 import { useEmergencyStore } from '@/store/emergencyStore';
 
+interface SpeechRecognitionInstance extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onresult: ((event: SpeechRecognitionResultEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+}
+
+interface SpeechRecognitionResultEvent {
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionErrorEvent {
+  error: string;
+}
+
 declare global {
   interface Window {
-    webkitSpeechRecognition?: new () => SpeechRecognition;
-    SpeechRecognition?: new () => SpeechRecognition;
+    webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+    SpeechRecognition?: new () => SpeechRecognitionInstance;
   }
 }
 
@@ -16,7 +36,7 @@ const SpeechRecognitionAPI =
     : undefined;
 
 export function useSpeechRecognition() {
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const isRecordingRef = useRef(false);
   const baseTextRef = useRef('');
   const { setEmergencyText, isRecording, setRecording } = useEmergencyStore();
@@ -30,9 +50,9 @@ export function useSpeechRecognition() {
     recognition.interimResults = true;
     recognition.lang = 'en-US';
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event: SpeechRecognitionResultEvent) => {
       const fullTranscript = Array.from(event.results)
-        .map((r) => r[0].transcript)
+        .map((r: SpeechRecognitionResult) => r[0].transcript)
         .join('');
       const newText = (baseTextRef.current + fullTranscript).trim();
       setEmergencyText(newText);
